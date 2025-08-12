@@ -13,7 +13,7 @@ func StartPublishServer(params map[string]*string, terms []server.TermsRootMulti
 		fmt.Fprintf(w, "%s", generateHtml(params, terms))
 	})
 	url := "127.0.0.1:8090"
-	log.Printf("Server started on: %v\n", url)
+	log.Printf("server started on: %v\n", url)
 	http.ListenAndServe(url, nil)
 }
 
