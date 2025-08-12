@@ -41,4 +41,5 @@ Type Luxmed Password and press enter:
 ```
 (as mentioned, some additional errors may appear, depending on the specific input; again, it is pretty much WIP)
 
-As the log suggests, you should see the results on `http://127.0.0.1:8090/` (accessible via browser)
+As the log suggests, you should see the results on `http://127.0.0.1:8090/` (accessible via browser):
+![example publish screenshot](./docs/resources/example_publish.png)
