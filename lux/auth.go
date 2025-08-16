@@ -1,20 +1,19 @@
-package server
+package lux
 
 import (
-	"SzymonZet/LuxmedCheck/connection"
-	"SzymonZet/LuxmedCheck/erroring"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"strings"
+	"szymonzet/luxchck/erroring"
 )
 
 type HttpRequest *http.Request
 
 var CurrentHeaderAuthString string
-var loginUrl string = connection.GetFullUrl("/PatientPortal/Account/LogIn")
+var loginUrl string = getFullUrl("/PatientPortal/Account/LogIn")
 
 func RefreshAuthToken(login string, password string) {
 	loginReqBody := struct {
@@ -50,10 +49,6 @@ func RefreshAuthToken(login string, password string) {
 		erroring.QuitIfError(err, "error when trying to build auth header cookie string")
 	}
 
-	// fmt.Println("=====")
-	// fmt.Println(cookieHeaderString.String())
-	// fmt.Println("=====")
-
 	content, err := io.ReadAll(resp.Body)
 	erroring.QuitIfError(err, "error when getting body from auth request response")
 
@@ -66,7 +61,6 @@ func RefreshAuthToken(login string, password string) {
 	log.Println("logged in successfully")
 
 	CurrentHeaderAuthString = cookieHeaderString.String()
-	//CurrentAuthToken = fmt.Sprintf("Authorization-Token=%v; UserAdditionalInfo=", loginRespBody.Token)
 
 }
 

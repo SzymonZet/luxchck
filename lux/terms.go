@@ -1,11 +1,10 @@
-package server
+package lux
 
 import (
-	"SzymonZet/LuxmedCheck/connection"
-	"SzymonZet/LuxmedCheck/erroring"
 	"encoding/json"
 	"fmt"
 	"log"
+	"szymonzet/luxchck/erroring"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,7 +15,7 @@ type termsEndpointType struct {
 }
 
 var TermsEndpoint termsEndpointType = termsEndpointType{
-	fullEndpointUrl: connection.GetFullUrl("/PatientPortal/NewPortal/terms/index"),
+	fullEndpointUrl: getFullUrl("/PatientPortal/NewPortal/terms/index"),
 }
 
 type TermsRoot struct {
@@ -85,8 +84,6 @@ func (t termsEndpointType) GetFilteredTermObjects(cities map[string]int, service
 			addUrlParametersToRequest(req, params)
 
 			body := getResponse(req)
-
-			// fmt.Println(string(body))
 
 			err := json.Unmarshal(body, &termsRoot)
 			erroring.LogIfError(err, fmt.Sprintf("error when trying to unmarshal response from:\n%v", string(body)))

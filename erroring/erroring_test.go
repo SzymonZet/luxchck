@@ -1,10 +1,10 @@
 package erroring
 
 import (
-	"SzymonZet/LuxmedCheck/tester"
 	"bytes"
 	"errors"
 	"log"
+	"szymonzet/luxchck/tester"
 	"testing"
 )
 

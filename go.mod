@@ -1,4 +1,4 @@
-module SzymonZet/LuxmedCheck
+module szymonzet/luxchck
 
 go 1.24.6
 

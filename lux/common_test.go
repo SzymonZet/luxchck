@@ -1,9 +1,9 @@
-package connection
+package lux
 
 import (
-	"SzymonZet/LuxmedCheck/tester"
 	"bytes"
 	"log"
+	"szymonzet/luxchck/tester"
 	"testing"
 )
 
@@ -24,7 +24,7 @@ func TestGetFullUrl(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.testName, func(t *testing.T) {
-			got := GetFullUrl(test.inputEndpoint)
+			got := getFullUrl(test.inputEndpoint)
 			tester.Assert(t, got, test.wantUrl)
 
 			// the idea was for function to fail when parsing url

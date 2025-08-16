@@ -1,9 +1,9 @@
 package credentials
 
 import (
-	"SzymonZet/LuxmedCheck/erroring"
 	"fmt"
 	"syscall"
+	"szymonzet/luxchck/erroring"
 
 	"golang.org/x/term"
 )

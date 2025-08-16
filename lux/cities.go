@@ -1,12 +1,11 @@
-package server
+package lux
 
 import (
-	"SzymonZet/LuxmedCheck/connection"
-	"SzymonZet/LuxmedCheck/erroring"
 	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
+	"szymonzet/luxchck/erroring"
 )
 
 type citiesEndpointType struct {
@@ -14,7 +13,7 @@ type citiesEndpointType struct {
 }
 
 var CitiesEndpoint citiesEndpointType = citiesEndpointType{
-	fullEndpointUrl: connection.GetFullUrl("/PatientPortal/NewPortal/Dictionary/cities"),
+	fullEndpointUrl: getFullUrl("/PatientPortal/NewPortal/Dictionary/cities"),
 }
 
 type cities []struct {

@@ -1,10 +1,10 @@
-# LuxmedCheck
+# luxchck
 
 ## About
 
 This is a PoC for a project, which end-goal is to:
 * Learn Go (particularly: dealing with API responses, writing unit tests, trying to wrap my head around the "half-objective" nature of this language)
-* Create a working console tool to get Luxmed visit openings (official UI is problematic, does not refresh well, constantly requires you to answer additional questions); also in the future, there should be more filters, better stability, continuos/looped requests + notification whenever new opening appears
+* Create a working console tool to get visit openings from https://portalpacjenta.luxmed.pl/ (official UI is problematic, does not refresh well, constantly requires you to answer additional questions); also in the future, there should be more filters, better stability, continuos/looped requests + notification whenever new opening appears
 
 **Again, for the time being, this is PoC/WIP and topic is still being researched**: it doesn't have all the filters and other features yet, plus crashes like crazy in some cases, for reasons yet unknown; most likely explanation is me not correctly interpreting API responses, which is understandable, as I don't exactly have documentation for it ;) 
 
@@ -14,20 +14,20 @@ This is a PoC for a project, which end-goal is to:
 2. Install Go/Golang: https://go.dev/doc/install
 3. Open bash/ps1/cmd and go to root directory
 4. Type `go run . -city="wroc" -visitType="hemat"`
-5. Type your Luxmed login, press `enter`, then type your Luxmed password, also press `enter` (note: not seeing any characters is intentional way of masking login/password)
+5. Type your login, press `enter`, then type your password, also press `enter` (note: not seeing any characters is intentional way of masking login/password)
 
 Typical output should look like this:
 ```
 ==============================
-SzymonZet/LuxmedCheck
+szymonzet/luxchck
 ==============================
 
- PARAMETER : VALUE               
+ PARAMETER | VALUE               
  visitType | hemat               
       city | wroc                
 
-Type Luxmed Login and press enter: 
-Type Luxmed Password and press enter: 
+Type Login and press enter: 
+Type Password and press enter: 
 
 ==============================
 

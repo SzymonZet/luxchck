@@ -1,14 +1,14 @@
 package publish
 
 import (
-	"SzymonZet/LuxmedCheck/server"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
+	"szymonzet/luxchck/lux"
 )
 
-func StartPublishServer(params map[string]*string, terms []server.TermsRootMultiple) {
+func StartPublishServer(params map[string]*string, terms []lux.TermsRootMultiple) {
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "%s", generateHtml(params, terms))
 	})
@@ -17,10 +17,10 @@ func StartPublishServer(params map[string]*string, terms []server.TermsRootMulti
 	http.ListenAndServe(url, nil)
 }
 
-func generateHtml(params map[string]*string, terms []server.TermsRootMultiple) string {
+func generateHtml(params map[string]*string, terms []lux.TermsRootMultiple) string {
 	var htmlBuilder strings.Builder
 
-	htmlBuilder.WriteString(`<html><head><title>Luxmed - Terms</title><style>table, tr, td{border: 1px solid black} tr, td{padding: 3px}</style></head><body>`)
+	htmlBuilder.WriteString(`<html><head><title>luxchck - Terms</title><style>table, tr, td{border: 1px solid black} tr, td{padding: 3px}</style></head><body>`)
 
 	htmlBuilder.WriteString("<h1>Defined search parameters</h1><ul>")
 	for key, val := range params {
@@ -38,7 +38,7 @@ func generateHtml(params map[string]*string, terms []server.TermsRootMultiple) s
 	return htmlBuilder.String()
 }
 
-func generateTermsTableHtml(termsRoot server.TermsRoot) string {
+func generateTermsTableHtml(termsRoot lux.TermsRoot) string {
 	var htmlBuilder strings.Builder
 	htmlBuilder.WriteString("<table>")
 

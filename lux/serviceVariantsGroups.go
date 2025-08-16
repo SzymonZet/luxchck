@@ -1,13 +1,12 @@
-package server
+package lux
 
 import (
-	"SzymonZet/LuxmedCheck/connection"
-	"SzymonZet/LuxmedCheck/erroring"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"strings"
+	"szymonzet/luxchck/erroring"
 )
 
 type serviceVariantsGroupsEndpointType struct {
@@ -15,7 +14,7 @@ type serviceVariantsGroupsEndpointType struct {
 }
 
 var ServiceVariantsGroupsEndpoint serviceVariantsGroupsEndpointType = serviceVariantsGroupsEndpointType{
-	fullEndpointUrl: connection.GetFullUrl("/PatientPortal/NewPortal/Dictionary/serviceVariantsGroups"),
+	fullEndpointUrl: getFullUrl("/PatientPortal/NewPortal/Dictionary/serviceVariantsGroups"),
 }
 
 type serviceVariantsGroups []struct {

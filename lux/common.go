@@ -1,21 +1,16 @@
-package server
+package lux
 
 import (
-	"SzymonZet/LuxmedCheck/erroring"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"szymonzet/luxchck/erroring"
 )
 
-// type endpoint struct {
-// 	fullEndpointUrl string
-// }
-
-// func newEndpoint(urlSuffix string) endpoint {
-// 	return endpoint{
-// 		fullEndpointUrl: connection.GetFullUrl(urlSuffix),
-// 	}
-// }
+const (
+	baseUrl string = "https://portalpacjenta.luxmed.pl/"
+)
 
 func invokeRequest(url string, requestType string) []byte {
 	req := createAuthorizedRequest(url, requestType)
@@ -55,4 +50,12 @@ func addUrlParametersToRequest(req *http.Request, params map[string]string) {
 		parametrizedUrl.Add(key, val)
 	}
 	req.URL.RawQuery = parametrizedUrl.Encode()
+}
+
+func getFullUrl(endpoint string) string {
+	output, err := url.JoinPath(baseUrl, endpoint)
+	erroring.QuitIfError(err, "error when trying to parse %v url")
+	_, err = url.ParseRequestURI(output)
+	erroring.QuitIfError(err, "error when trying to parse %v url")
+	return output
 }
