@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"szymonzet/luxchck/cred"
 	"szymonzet/luxchck/erroring"
 	"time"
 )
@@ -13,6 +14,14 @@ import (
 const (
 	baseUrl string = "https://portalpacjenta.luxmed.pl/"
 )
+
+func getFullUrl(endpoint string) string {
+	output, err := url.JoinPath(baseUrl, endpoint)
+	erroring.QuitIfError(err, "error when trying to parse %v url")
+	_, err = url.ParseRequestURI(output)
+	erroring.QuitIfError(err, "error when trying to parse %v url")
+	return output
+}
 
 func invokeRequest(url string, requestType string) []byte {
 	req := createAuthorizedRequest(url, requestType)
@@ -22,7 +31,7 @@ func invokeRequest(url string, requestType string) []byte {
 func createAuthorizedRequest(url string, requestType string) *http.Request {
 	req, err := http.NewRequest(requestType, url, nil)
 	erroring.LogIfError(err, fmt.Sprintf("error when creating %v request for: \n```\n%v\n```\n", requestType, url))
-	req.Header.Add("Cookie", HeaderCookie)
+	addHeaderCookie(req)
 
 	return req
 }
@@ -34,6 +43,11 @@ func getResponse(req *http.Request) []byte {
 	timeoutBeforeRequest := 2
 
 	for currentAttempt := 1; currentAttempt <= maxAttempts; currentAttempt++ {
+		if currentAttempt > 1 {
+			cred.RefreshHeaderCookie()
+			addHeaderCookie(req)
+		}
+
 		time.Sleep(time.Duration(timeoutBeforeRequest) * time.Second)
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
@@ -86,10 +100,7 @@ func addUrlParametersToRequest(req *http.Request, params map[string]string) {
 	req.URL.RawQuery = parametrizedUrl.Encode()
 }
 
-func getFullUrl(endpoint string) string {
-	output, err := url.JoinPath(baseUrl, endpoint)
-	erroring.QuitIfError(err, "error when trying to parse %v url")
-	_, err = url.ParseRequestURI(output)
-	erroring.QuitIfError(err, "error when trying to parse %v url")
-	return output
+func addHeaderCookie(req *http.Request) {
+	req.Header.Del("Cookie")
+	req.Header.Add("Cookie", cred.GetHeaderCookie())
 }

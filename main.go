@@ -28,8 +28,8 @@ func main() {
 	}
 	fmt.Println()
 
-	login := cred.GetSecureString("Login")
-	pass := cred.GetSecureString("Password")
+	cred.SetLoginAndPassword()
+	cred.RefreshHeaderCookie()
 
 	fmt.Println()
 	fmt.Println("==============================")
@@ -37,10 +37,16 @@ func main() {
 
 	log.Println("main processing started...")
 
-	lux.RefreshHeaderCookie(login, pass)
-	groups := lux.ServiceVariantsGroupsEndpoint.GetAllRaw().GetFiltered(*params["visitType"])
+	variants := lux.ServiceVariantsGroupsEndpoint.GetAllRaw().GetFiltered(*params["visitType"])
 	cities := lux.CitiesEndpoint.GetAllRaw().GetFiltered(*params["city"])
-	terms := lux.TermsEndpoint.GetAllRaw(cities, groups)
+
+	reqCombinationsCount := len(cities) * len(variants)
+	log.Printf("cities: %v | variants: %v | total: %v\n", len(cities), len(variants), reqCombinationsCount)
+	if reqCombinationsCount > 5 {
+		log.Printf("WARN | too many potential request combinations: %v | you may exceed rates / encounter error 429, please consider narrowing down search parameters!", reqCombinationsCount)
+	}
+
+	terms := lux.TermsEndpoint.GetAllRaw(cities, variants)
 
 	log.Println("main processing completed successfully")
 
