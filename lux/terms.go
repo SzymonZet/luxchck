@@ -19,6 +19,7 @@ var TermsEndpoint termsEndpointType = termsEndpointType{
 }
 
 type TermsRoot struct {
+	CorrelationId   string          `json:"correlationId"`
 	TermsForService termsForService `json:"termsForService"`
 }
 
@@ -51,7 +52,7 @@ type TermsRootMultiple struct {
 	TermsRoot      TermsRoot
 }
 
-func (t termsEndpointType) GetFilteredTermObjects(cities map[string]int, serviceVariants map[string]int) []TermsRootMultiple {
+func (t termsEndpointType) GetAllRaw(cities map[string]int, serviceVariants map[string]int) []TermsRootMultiple {
 	var output []TermsRootMultiple
 	var termsRoot TermsRoot
 	dateFrom := time.Now().Format("2006-01-02")
@@ -83,19 +84,28 @@ func (t termsEndpointType) GetFilteredTermObjects(cities map[string]int, service
 
 			addUrlParametersToRequest(req, params)
 
+			log.Printf("city: %v (%v) | variant: %v (%v) - trying to get a response...", cityName, cityId, variantName, variantId)
+
 			body := getResponse(req)
 
 			err := json.Unmarshal(body, &termsRoot)
-			erroring.LogIfError(err, fmt.Sprintf("error when trying to unmarshal response from:\n%v", string(body)))
+			erroring.LogIfError(err, fmt.Sprintf("error when trying to unmarshal response from:\n```\n%v\n```\n", string(body)))
 
-			newEntry := TermsRootMultiple{
-				City:           fmt.Sprintf("%v (%v)", cityName, cityId),
-				ServiceVariant: fmt.Sprintf("%v (%v)", variantName, variantId),
-				TermsRoot:      termsRoot,
-			}
+			if termsRoot.CorrelationId == "" {
+				log.Printf("city: %v (%v) | variant: %v (%v) - no response or no visits could be read from:\n```\n%v\n```\n", cityName, cityId, variantName, variantId, string(body))
+			} else {
+				daysWithVisits := len(termsRoot.TermsForService.TermsForDays)
+				log.Printf("city: %v (%v) | variant: %v (%v) - days with visits read: %v", cityName, cityId, variantName, variantId, daysWithVisits)
 
-			if len(newEntry.TermsRoot.TermsForService.TermsForDays) > 0 {
-				output = append(output, newEntry)
+				if daysWithVisits > 0 {
+					newEntry := TermsRootMultiple{
+						City:           fmt.Sprintf("%v (%v)", cityName, cityId),
+						ServiceVariant: fmt.Sprintf("%v (%v)", variantName, variantId),
+						TermsRoot:      termsRoot,
+					}
+
+					output = append(output, newEntry)
+				}
 			}
 		}
 	}

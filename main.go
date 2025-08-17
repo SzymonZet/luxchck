@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"szymonzet/luxchck/credentials"
+	"szymonzet/luxchck/cred"
 	"szymonzet/luxchck/lux"
 	"szymonzet/luxchck/publish"
 )
@@ -28,8 +28,8 @@ func main() {
 	}
 	fmt.Println()
 
-	login := credentials.GetSecureString("Login")
-	pass := credentials.GetSecureString("Password")
+	login := cred.GetSecureString("Login")
+	pass := cred.GetSecureString("Password")
 
 	fmt.Println()
 	fmt.Println("==============================")
@@ -37,10 +37,10 @@ func main() {
 
 	log.Println("main processing started...")
 
-	lux.RefreshAuthToken(login, pass)
-	groups := lux.ServiceVariantsGroupsEndpoint.GetAllServiceVariantsGroupsObjects().GetFilteredVariants(*params["visitType"])
-	cities := lux.CitiesEndpoint.GetAllCitiesObjects().GetFilteredCities(*params["city"])
-	terms := lux.TermsEndpoint.GetFilteredTermObjects(cities, groups)
+	lux.RefreshHeaderCookie(login, pass)
+	groups := lux.ServiceVariantsGroupsEndpoint.GetAllRaw().GetFiltered(*params["visitType"])
+	cities := lux.CitiesEndpoint.GetAllRaw().GetFiltered(*params["city"])
+	terms := lux.TermsEndpoint.GetAllRaw(cities, groups)
 
 	log.Println("main processing completed successfully")
 

@@ -35,7 +35,7 @@ type serviceVariantsSubSubGroups struct {
 	Children []any  `json:"children"`
 }
 
-func (s serviceVariantsGroupsEndpointType) GetAllServiceVariantsGroupsObjects() serviceVariantsGroups {
+func (s serviceVariantsGroupsEndpointType) GetAllRaw() serviceVariantsGroups {
 	var output serviceVariantsGroups
 	body := invokeRequest(s.fullEndpointUrl, "GET")
 
@@ -45,7 +45,7 @@ func (s serviceVariantsGroupsEndpointType) GetAllServiceVariantsGroupsObjects() 
 	return output
 }
 
-func (s serviceVariantsGroups) GetFilteredVariants(searchedName string) map[string]int {
+func (s serviceVariantsGroups) GetFiltered(searchedName string) map[string]int {
 	result := make(map[string]int)
 	searchedName = strings.ToLower(searchedName)
 
@@ -59,13 +59,14 @@ func (s serviceVariantsGroups) GetFilteredVariants(searchedName string) map[stri
 							erroring.LogIfError(errors.New("more serviceVariantsGroups levels than predicted"), "error when trying to extract serviceVariantsGroups")
 						}
 						if name := lvl3.Name; strings.Contains(strings.ToLower(name), searchedName) {
-							result[name] = lvl3.Id
+							result[fmt.Sprintf("%v -> %v -> %v", lvl1.Name, lvl2.Name, name)] = lvl3.Id
 						}
 					}
 				} else {
 					//fmt.Println(lvl2.Name)
 					if name := lvl2.Name; strings.Contains(strings.ToLower(name), searchedName) {
-						result[name] = lvl2.Id
+						//result[name] = lvl2.Id
+						result[fmt.Sprintf("%v -> %v", lvl1.Name, name)] = lvl2.Id
 					}
 				}
 			}

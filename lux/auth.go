@@ -10,12 +10,11 @@ import (
 	"szymonzet/luxchck/erroring"
 )
 
-type HttpRequest *http.Request
-
-var CurrentHeaderAuthString string
+var HeaderCookie string
 var loginUrl string = getFullUrl("/PatientPortal/Account/LogIn")
+var login, password string
 
-func RefreshAuthToken(login string, password string) {
+func RefreshHeaderCookie(login string, password string) {
 	loginReqBody := struct {
 		Login    string `json:"login"`
 		Password string `json:"password"`
@@ -60,10 +59,5 @@ func RefreshAuthToken(login string, password string) {
 	}
 	log.Println("logged in successfully")
 
-	CurrentHeaderAuthString = cookieHeaderString.String()
-
-}
-
-func AddAuthTokenHeader(httpRequest *http.Request) {
-	httpRequest.Header.Add("Cookie", CurrentHeaderAuthString)
+	HeaderCookie = cookieHeaderString.String()
 }

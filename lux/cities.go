@@ -21,7 +21,7 @@ type cities []struct {
 	Name string `json:"name"`
 }
 
-func (c citiesEndpointType) GetAllCitiesObjects() cities {
+func (c citiesEndpointType) GetAllRaw() cities {
 	var output cities
 	body := invokeRequest(c.fullEndpointUrl, "GET")
 
@@ -31,11 +31,11 @@ func (c citiesEndpointType) GetAllCitiesObjects() cities {
 	return output
 }
 
-func (c cities) GetFilteredCities(searchedName string) map[string]int {
+func (c cities) GetFiltered(searchedName string) map[string]int {
 	result := make(map[string]int)
 	searchedName = strings.ToLower(searchedName)
 	for _, val := range c {
-		if strings.Contains(strings.ToLower(val.Name), searchedName) {
+		if strings.ToLower(val.Name) == searchedName {
 			result[val.Name] = val.Id
 		}
 	}

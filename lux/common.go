@@ -3,9 +3,11 @@ package lux
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"szymonzet/luxchck/erroring"
+	"time"
 )
 
 const (
@@ -20,28 +22,60 @@ func invokeRequest(url string, requestType string) []byte {
 func createAuthorizedRequest(url string, requestType string) *http.Request {
 	req, err := http.NewRequest(requestType, url, nil)
 	erroring.LogIfError(err, fmt.Sprintf("error when creating %v request for: \n```\n%v\n```\n", requestType, url))
-	req.Header.Add("Cookie", CurrentHeaderAuthString)
+	req.Header.Add("Cookie", HeaderCookie)
 
 	return req
 }
 
 func getResponse(req *http.Request) []byte {
-	resp, err := http.DefaultClient.Do(req)
-	erroring.LogIfError(err, fmt.Sprintf("error when invoking request for: \n```\n%v\n```\n", req.URL))
+	var output []byte
+	maxAttempts := 3
+	timeoutOnTooManyRequestsSecs := 60
+	timeoutBeforeRequest := 2
 
-	defer resp.Body.Close()
+	for currentAttempt := 1; currentAttempt <= maxAttempts; currentAttempt++ {
+		time.Sleep(time.Duration(timeoutBeforeRequest) * time.Second)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			erroring.LogIfError(err, fmt.Sprintf("[attempt %v/%v] error when invoking request for: \n```\n%v\n```\n", currentAttempt, maxAttempts, req.URL))
+			continue
+		}
+		defer resp.Body.Close()
 
-	if st := resp.StatusCode; st != http.StatusOK {
-		erroring.LogIfError(
-			fmt.Errorf("response code was %v, expected %v", st, http.StatusOK),
-			fmt.Sprintf("problem with response after invoking request for: \n```\n%v\n```\n", req.URL),
-		)
+		if st := resp.StatusCode; st != http.StatusOK {
+			if st == http.StatusTooManyRequests {
+				erroring.LogIfError(
+					fmt.Errorf("response code was %v, expected %v", st, http.StatusOK),
+					fmt.Sprintf("[attempt %v/%v] trying again in %v seconds...", currentAttempt, maxAttempts, timeoutOnTooManyRequestsSecs),
+				)
+				time.Sleep(time.Duration(timeoutOnTooManyRequestsSecs) * time.Second)
+				resp.Body.Close()
+				continue
+			} else {
+				erroring.LogIfError(
+					fmt.Errorf("response code was %v, expected %v", st, http.StatusOK),
+					fmt.Sprintf("[attempt %v/%v] problem with response after invoking request for: \n```\n%v\n```\n", currentAttempt, maxAttempts, req.URL),
+				)
+				resp.Body.Close()
+				continue
+			}
+		} else {
+			output, err = io.ReadAll(resp.Body)
+			if err != nil {
+				erroring.LogIfError(err, fmt.Sprintf("[attempt %v/%v] error when reading response from request for: \n```\n%v\n```\n", currentAttempt, maxAttempts, req.URL))
+				resp.Body.Close()
+				continue
+			}
+
+			break
+		}
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	erroring.LogIfError(err, fmt.Sprintf("error when reading response from request for: \n```\n%v\n```\n", req.URL))
+	if len(output) == 0 {
+		log.Printf("out of attempts / never got a proper response for:\n```\n%v\n```\n", req.URL)
+	}
 
-	return body
+	return output
 }
 
 func addUrlParametersToRequest(req *http.Request, params map[string]string) {
