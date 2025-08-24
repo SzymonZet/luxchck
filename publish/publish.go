@@ -8,7 +8,7 @@ import (
 	"szymonzet/luxchck/lux"
 )
 
-func StartPublishServer(params map[string]*string, terms []lux.TermsRootMultiple) {
+func StartPublishServer(params map[string]*string, terms lux.TermsTargets) {
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "%s", generateHtml(params, terms))
 	})
@@ -17,7 +17,7 @@ func StartPublishServer(params map[string]*string, terms []lux.TermsRootMultiple
 	http.ListenAndServe(url, nil)
 }
 
-func generateHtml(params map[string]*string, terms []lux.TermsRootMultiple) string {
+func generateHtml(params map[string]*string, terms lux.TermsTargets) string {
 	var htmlBuilder strings.Builder
 
 	htmlBuilder.WriteString(`<html><head><title>luxchck - Terms</title><style>table, tr, td{border: 1px solid black} tr, td{padding: 3px}</style></head><body>`)
@@ -29,8 +29,8 @@ func generateHtml(params map[string]*string, terms []lux.TermsRootMultiple) stri
 	htmlBuilder.WriteString("</ul>")
 
 	for _, term := range terms {
-		htmlBuilder.WriteString(fmt.Sprintf(`<h1>%v | %v</h1>`, term.City, term.ServiceVariant))
-		htmlBuilder.WriteString(generateTermsTableHtml(term.TermsRoot))
+		htmlBuilder.WriteString(fmt.Sprintf(`<h1>%v</h1>`, term.Title))
+		htmlBuilder.WriteString(generateTermsTableHtml(term.Terms))
 	}
 
 	htmlBuilder.WriteString(`</body></html>`)
@@ -38,7 +38,7 @@ func generateHtml(params map[string]*string, terms []lux.TermsRootMultiple) stri
 	return htmlBuilder.String()
 }
 
-func generateTermsTableHtml(termsRoot lux.TermsRoot) string {
+func generateTermsTableHtml(termsFlatten []lux.TermFlatten) string {
 	var htmlBuilder strings.Builder
 	htmlBuilder.WriteString("<table>")
 
@@ -54,22 +54,17 @@ func generateTermsTableHtml(termsRoot lux.TermsRoot) string {
 		),
 	)
 
-	for _, termDay := range termsRoot.TermsForService.TermsForDays {
-		for _, term := range termDay.Terms {
-			htmlBuilder.WriteString(
-				fmt.Sprintf(
-					"<tr><td>%v</td><td>%v</td><td>%v</td><td>%v</td><td>%v %v %v</td></tr>",
-					termDay.Day,
-					term.DateTimeFrom,
-					term.DateTimeTo,
-					//term.Clinic,
-					term.ClinicGroup,
-					term.Doctor.AcademicTitle,
-					term.Doctor.FirstName,
-					term.Doctor.LastName,
-				),
-			)
-		}
+	for _, term := range termsFlatten {
+		htmlBuilder.WriteString(
+			fmt.Sprintf(
+				"<tr><td>%v</td><td>%v</td><td>%v</td><td>%v</td><td>%v</td></tr>",
+				term.Day,
+				term.TimeFrom,
+				term.TimeTo,
+				term.Clinic,
+				term.Doctor,
+			),
+		)
 	}
 
 	htmlBuilder.WriteString("</table>")

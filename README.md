@@ -13,7 +13,7 @@ This is a PoC for a project, which end-goal is to:
 1. Download/clone this repo
 2. Install Go/Golang: https://go.dev/doc/install
 3. Open bash/ps1/cmd and go to root directory
-4. Type `go run . -city="wroc" -visitType="hemat"`
+4. Type `go run . -city="wrocław" -visitTypes="inter" -clinics="swob;legn"`
 5. Type your login, press `enter`, then type your password, also press `enter` (note: not seeing any characters is intentional way of masking login/password)
 
 Typical output should look like this:
@@ -23,21 +23,22 @@ szymonzet/luxchck
 ==============================
 
  PARAMETER | VALUE               
- visitType | hemat               
-      city | wroc                
+visitTypes | inter               
+      city | wrocław             
+   clinics | swob;legn           
+   doctors |                     
 
 Type Login and press enter: 
 Type Password and press enter: 
+2025/08/24 18:52:25 trying to (re)log in...
+2025/08/24 18:52:25 (re)logged in successfully
 
 ==============================
 
-2025/08/12 23:25:55 main processing started...
-2025/08/12 23:25:56 logged in successfully
-2025/08/12 23:25:56 at least one variant / visit type found successfully
-2025/08/12 23:25:56 at least one city found successfully
-2025/08/12 23:25:57 list of terms/visits obtained successfully
-2025/08/12 23:25:57 main processing completed successfully
-2025/08/12 23:25:57 server started on: 127.0.0.1:8090
+2025/08/24 18:52:25 main processing started...
+[...]
+2025/08/24 18:52:42 main processing completed successfully
+2025/08/24 18:52:42 server started on: 127.0.0.1:8090
 ```
 (as mentioned, some additional errors may appear, depending on the specific input; again, it is pretty much WIP)
 
