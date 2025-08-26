@@ -9,21 +9,21 @@ import (
 )
 
 type citiesEndpointType struct {
-	fullEndpointUrl string
+	url string
 }
 
 var CitiesEndpoint citiesEndpointType = citiesEndpointType{
-	fullEndpointUrl: getFullUrl("/PatientPortal/NewPortal/Dictionary/cities"),
+	url: getFullUrl("/PatientPortal/NewPortal/Dictionary/cities"),
 }
 
-type cities []struct {
+type citiesResponse []struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
 }
 
-func (c citiesEndpointType) GetAllRaw() cities {
-	var output cities
-	body := invokeRequest(c.fullEndpointUrl, "GET")
+func (c citiesEndpointType) GetAllRaw() citiesResponse {
+	var output citiesResponse
+	body := invokeRequest(c.url, "GET")
 
 	err := json.Unmarshal(body, &output)
 	erroring.QuitIfError(err, fmt.Sprintf("error when trying to unmarshal response from:\n%v", string(body)))
@@ -31,7 +31,7 @@ func (c citiesEndpointType) GetAllRaw() cities {
 	return output
 }
 
-func (c cities) GetFiltered(searchedName string) map[string]int {
+func (c citiesResponse) GetFiltered(searchedName string) map[string]int {
 	result := make(map[string]int)
 	searchedName = strings.ToLower(searchedName)
 	for _, val := range c {

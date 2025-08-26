@@ -10,34 +10,30 @@ import (
 )
 
 type serviceVariantsGroupsEndpointType struct {
-	fullEndpointUrl string
+	url string
 }
 
 var ServiceVariantsGroupsEndpoint serviceVariantsGroupsEndpointType = serviceVariantsGroupsEndpointType{
-	fullEndpointUrl: getFullUrl("/PatientPortal/NewPortal/Dictionary/serviceVariantsGroups"),
+	url: getFullUrl("/PatientPortal/NewPortal/Dictionary/serviceVariantsGroups"),
 }
 
 type serviceVariantsGroups []struct {
-	Id       int                        `json:"id"`
-	Name     string                     `json:"name"`
-	Children []serviceVariantsSubGroups `json:"children"`
-}
-
-type serviceVariantsSubGroups struct {
-	Id       int                           `json:"id"`
-	Name     string                        `json:"name"`
-	Children []serviceVariantsSubSubGroups `json:"children"`
-}
-
-type serviceVariantsSubSubGroups struct {
 	Id       int    `json:"id"`
 	Name     string `json:"name"`
-	Children []any  `json:"children"`
+	Children []struct {
+		Id       int    `json:"id"`
+		Name     string `json:"name"`
+		Children []struct {
+			Id       int    `json:"id"`
+			Name     string `json:"name"`
+			Children []any  `json:"children"`
+		} `json:"children"`
+	} `json:"children"`
 }
 
 func (s serviceVariantsGroupsEndpointType) GetAllRaw() serviceVariantsGroups {
 	var output serviceVariantsGroups
-	body := invokeRequest(s.fullEndpointUrl, "GET")
+	body := invokeRequest(s.url, "GET")
 
 	err := json.Unmarshal(body, &output)
 	erroring.QuitIfError(err, fmt.Sprintf("error when trying to unmarshal response from:\n%v", string(body)))

@@ -14,51 +14,55 @@ import (
 const dateTimeLayout string = "2006-01-02T15:04:05"
 
 type termsEndpointType struct {
-	fullEndpointUrl string
+	urlIndex       string
+	urlNextTerms   string
+	urlOneDayTerms string
 }
 
 var TermsEndpoint termsEndpointType = termsEndpointType{
-	fullEndpointUrl: getFullUrl("/PatientPortal/NewPortal/terms/index"),
+	urlIndex:       getFullUrl("/PatientPortal/NewPortal/terms/index"),
+	urlNextTerms:   getFullUrl("/PatientPortal/NewPortal/terms/nextTerms"),
+	urlOneDayTerms: getFullUrl("/PatientPortal/NewPortal/terms/oneDayTerms"),
 }
 
-type TermsRoot struct {
-	CorrelationId   string          `json:"correlationId"`
-	TermsForService termsForService `json:"termsForService"`
+type termsResponse struct {
+	CorrelationId   string `json:"correlationId"`
+	TermsForService struct {
+		TermsForDays []struct {
+			Day   string `json:"day"`
+			Terms []struct {
+				DateTimeFrom string `json:"dateTimeFrom"`
+				DateTimeTo   string `json:"dateTimeTo"`
+				Doctor       struct {
+					AcademicTitle string `json:"academicTitle"`
+					FirstName     string `json:"firstName"`
+					LastName      string `json:"lastName"`
+				} `json:"doctor"`
+				Clinic         string `json:"clinic"`
+				ClinicGroup    string `json:"clinicGroup"`
+				IsTelemedicine bool   `json:"isTelemedicine"`
+			} `json:"terms"`
+		} `json:"termsForDays"`
+		TermsInfoForDays []struct {
+			Day          string `json:"day"`
+			TermsStatus  int    `json:"termsStatus"`
+			Message      string `json:"message"`
+			TermsCounter struct {
+				TermsNumber int `json:"termsNumber"`
+			} `json:"termsCounter"`
+		} `json:"termsInfoForDays"`
+	} `json:"termsForService"`
 }
 
-type termsForService struct {
-	TermsForDays []termsForDays `json:"termsForDays"`
-}
-
-type termsForDays struct {
-	Day   string  `json:"day"`
-	Terms []terms `json:"terms"`
-}
-
-type terms struct {
-	DateTimeFrom   string `json:"dateTimeFrom"`
-	DateTimeTo     string `json:"dateTimeTo"`
-	Doctor         doctor `json:"doctor"`
-	Clinic         string `json:"clinic"`
-	ClinicGroup    string `json:"clinicGroup"`
-	IsTelemedicine bool   `json:"isTelemedicine"`
-}
-
-type doctor struct {
-	AcademicTitle string `json:"academicTitle"`
-	FirstName     string `json:"firstName"`
-	LastName      string `json:"lastName"`
-}
-
-type TermRootMultiple struct {
+type termsResponseExtended struct {
 	City           string
 	ServiceVariant string
-	TermsRoot      TermsRoot
+	TermsResponse  termsResponse
 }
 
-type TermsRootMultiple []TermRootMultiple
+type termsResponsesExtended []termsResponseExtended
 
-type TermsTarget struct {
+type termsTarget struct {
 	Title string
 	Desc  string
 	Terms []TermFlatten
@@ -72,17 +76,17 @@ type TermFlatten struct {
 	Doctor   string
 }
 
-type TermsTargets []TermsTarget
+type TermsTargets []termsTarget
 
-func (t termsEndpointType) GetAllRaw(cities map[string]int, serviceVariants map[string]int) TermsRootMultiple {
-	var output TermsRootMultiple
-	var termsRoot TermsRoot
+func (t termsEndpointType) GetAllRaw(cities map[string]int, serviceVariants map[string]int) termsResponsesExtended {
+	var output termsResponsesExtended
+	var termsRoot termsResponse
 	dateFrom := time.Now().Format("2006-01-02")
 	dateTo := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
 
 	for cityName, cityId := range cities {
 		for variantName, variantId := range serviceVariants {
-			req := createAuthorizedRequest(t.fullEndpointUrl, "GET")
+			req := createAuthorizedRequest(t.urlIndex, "GET")
 
 			params := map[string]string{
 				// actual parameters
@@ -120,10 +124,10 @@ func (t termsEndpointType) GetAllRaw(cities map[string]int, serviceVariants map[
 				log.Printf("city: %v (%v) | variant: %v (%v) - days with visits read: %v", cityName, cityId, variantName, variantId, daysWithVisits)
 
 				if daysWithVisits > 0 {
-					newEntry := TermRootMultiple{
+					newEntry := termsResponseExtended{
 						City:           fmt.Sprintf("%v (%v)", cityName, cityId),
 						ServiceVariant: fmt.Sprintf("%v (%v)", variantName, variantId),
-						TermsRoot:      termsRoot,
+						TermsResponse:  termsRoot,
 					}
 
 					output = append(output, newEntry)
@@ -137,13 +141,13 @@ func (t termsEndpointType) GetAllRaw(cities map[string]int, serviceVariants map[
 	return output
 }
 
-func (t TermsRootMultiple) FilterAndClean(clinics []string, doctors []string) TermsTargets {
+func (t termsResponsesExtended) FilterAndClean(clinics []string, doctors []string) TermsTargets {
 	var output TermsTargets
 	for _, termRootMultiple := range t {
-		termsTarget := TermsTarget{
+		termsTarget := termsTarget{
 			Title: fmt.Sprintf("%v | %v", termRootMultiple.City, termRootMultiple.ServiceVariant),
 		}
-		for _, termForDay := range termRootMultiple.TermsRoot.TermsForService.TermsForDays {
+		for _, termForDay := range termRootMultiple.TermsResponse.TermsForService.TermsForDays {
 			for _, term := range termForDay.Terms {
 				var isClinic, isDoctor bool
 
