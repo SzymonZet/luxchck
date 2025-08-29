@@ -25,27 +25,13 @@ var TermsEndpoint termsEndpointType = termsEndpointType{
 	urlOneDayTerms: getFullUrl("/PatientPortal/NewPortal/terms/oneDayTerms"),
 }
 
-type termsResponse struct {
+type termsIndexResponse struct {
 	CorrelationId   string `json:"correlationId"`
 	TermsForService struct {
-		TermsForDays []struct {
-			Day   string `json:"day"`
-			Terms []struct {
-				DateTimeFrom string `json:"dateTimeFrom"`
-				DateTimeTo   string `json:"dateTimeTo"`
-				Doctor       struct {
-					AcademicTitle string `json:"academicTitle"`
-					FirstName     string `json:"firstName"`
-					LastName      string `json:"lastName"`
-				} `json:"doctor"`
-				Clinic         string `json:"clinic"`
-				ClinicGroup    string `json:"clinicGroup"`
-				IsTelemedicine bool   `json:"isTelemedicine"`
-			} `json:"terms"`
-		} `json:"termsForDays"`
+		TermsForDays     []termsforDays `json:"termsForDays"`
 		TermsInfoForDays []struct {
 			Day          string `json:"day"`
-			TermsStatus  int    `json:"termsStatus"`
+			TermsStatus  int    `json:"termsStatus"` // 0 => potential visits exist that day
 			Message      string `json:"message"`
 			TermsCounter struct {
 				TermsNumber int `json:"termsNumber"`
@@ -54,10 +40,31 @@ type termsResponse struct {
 	} `json:"termsForService"`
 }
 
+type termsOneDayResponse struct {
+	CorrelationId string       `json:"correlationId"`
+	TermsForDay   termsforDays `json:"termsForDay"`
+}
+
+type termsforDays struct {
+	Day   string `json:"day"`
+	Terms []struct {
+		DateTimeFrom string `json:"dateTimeFrom"`
+		DateTimeTo   string `json:"dateTimeTo"`
+		Doctor       struct {
+			AcademicTitle string `json:"academicTitle"`
+			FirstName     string `json:"firstName"`
+			LastName      string `json:"lastName"`
+		} `json:"doctor"`
+		Clinic         string `json:"clinic"`
+		ClinicGroup    string `json:"clinicGroup"`
+		IsTelemedicine bool   `json:"isTelemedicine"`
+	} `json:"terms"`
+}
+
 type termsResponseExtended struct {
 	City           string
 	ServiceVariant string
-	TermsResponse  termsResponse
+	TermsResponse  []termsforDays
 }
 
 type termsResponsesExtended []termsResponseExtended
@@ -78,21 +85,22 @@ type TermFlatten struct {
 
 type TermsTargets []termsTarget
 
-func (t termsEndpointType) GetAllRaw(cities map[string]int, serviceVariants map[string]int) termsResponsesExtended {
+func (t termsEndpointType) GetAllRaw(cities map[string]int, serviceVariants []ServiceVariantsGroupsTarget) termsResponsesExtended {
 	var output termsResponsesExtended
-	var termsRoot termsResponse
+	var termsIndexResp termsIndexResponse
 	dateFrom := time.Now().Format("2006-01-02")
 	dateTo := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
 
+	// horribly written; to be re-factored into smaller bits
 	for cityName, cityId := range cities {
-		for variantName, variantId := range serviceVariants {
+		for _, variant := range serviceVariants {
 			req := createAuthorizedRequest(t.urlIndex, "GET")
 
 			params := map[string]string{
 				// actual parameters
+				"serviceVariantId": fmt.Sprintf("%v", variant.ChildId),
 				"searchPlace.id":   fmt.Sprintf("%v", cityId),
 				"searchPlace.name": fmt.Sprintf("%v", cityName),
-				"serviceVariantId": fmt.Sprintf("%v", variantId),
 				"searchDateFrom":   fmt.Sprintf("%v", dateFrom),
 				"searchDateTo":     fmt.Sprintf("%v", dateTo),
 
@@ -108,29 +116,87 @@ func (t termsEndpointType) GetAllRaw(cities map[string]int, serviceVariants map[
 				"delocalized":               "false",
 			}
 
+			// if !variant.IsTelemedicine {
+			// 	params["searchPlace.id"] = fmt.Sprintf("%v", cityId)
+			// 	params["searchPlace.name"] = fmt.Sprintf("%v", cityName)
+			// }
+
 			addUrlParametersToRequest(req, params)
 
-			log.Printf("city: %v (%v) | variant: %v (%v) - trying to get a response...", cityName, cityId, variantName, variantId)
+			log.Printf("city: %v (%v) | variant: %v (%v) - index - trying to get a response...", cityName, cityId, variant.FullName, variant.ChildId)
 
 			body := getResponse(req)
 
-			err := json.Unmarshal(body, &termsRoot)
+			err := json.Unmarshal(body, &termsIndexResp)
 			erroring.LogIfError(err, fmt.Sprintf("error when trying to unmarshal response from:\n```\n%v\n```\n", string(body)))
 
-			if termsRoot.CorrelationId == "" {
-				log.Printf("city: %v (%v) | variant: %v (%v) - no response or no visits could be read from:\n```\n%v\n```\n", cityName, cityId, variantName, variantId, string(body))
+			if termsIndexResp.CorrelationId == "" {
+				log.Printf("city: %v (%v) | variant: %v (%v) - index - no response or no visits could be read from:\n```\n%v\n```\n", cityName, cityId, variant.FullName, variant.ChildId, string(body))
 			} else {
-				daysWithVisits := len(termsRoot.TermsForService.TermsForDays)
-				log.Printf("city: %v (%v) | variant: %v (%v) - days with visits read: %v", cityName, cityId, variantName, variantId, daysWithVisits)
+				daysWithVisits := len(termsIndexResp.TermsForService.TermsForDays)
+				log.Printf("city: %v (%v) | variant: %v (%v) - index - days with visits read: %v", cityName, cityId, variant.FullName, variant.ChildId, daysWithVisits)
 
 				if daysWithVisits > 0 {
 					newEntry := termsResponseExtended{
 						City:           fmt.Sprintf("%v (%v)", cityName, cityId),
-						ServiceVariant: fmt.Sprintf("%v (%v)", variantName, variantId),
-						TermsResponse:  termsRoot,
+						ServiceVariant: fmt.Sprintf("%v (%v)", variant.FullName, variant.ChildId),
+						TermsResponse:  termsIndexResp.TermsForService.TermsForDays,
 					}
 
 					output = append(output, newEntry)
+				} else {
+					for _, info := range termsIndexResp.TermsForService.TermsInfoForDays {
+						if info.TermsCounter.TermsNumber > 0 {
+							day := extractDate(info.Day)
+							var termsOneDayResp termsOneDayResponse
+							req = createAuthorizedRequest(t.urlOneDayTerms, "GET")
+							params["searchDateFrom"] = day
+							params["searchDateTo"] = day
+							params["expectedTermsNumber"] = fmt.Sprint(info.TermsCounter.TermsNumber)
+
+							// delete(params, "serviceVariantSource")
+							// delete(params, "nextSearch")
+							// delete(params, "locationReplaced")
+							// delete(params, "searchDatePreset")
+							// if variant.IsTelemedicine {
+							// 	delete(params, "searchPlace.id")
+							// 	delete(params, "searchPlace.name")
+							// }
+
+							addUrlParametersToRequest(req, params)
+
+							log.Printf("city: %v (%v) | variant: %v (%v) - oneDayTerms - %v - trying to get a response...", cityName, cityId, variant.FullName, variant.ChildId, day)
+
+							body := getResponse(req)
+
+							err = json.Unmarshal(body, &termsOneDayResp)
+
+							// debug
+							fmt.Println()
+							// fmt.Println(req.URL)
+							// fmt.Println(string(body))
+							fmt.Println(termsOneDayResp)
+							fmt.Println()
+
+							if termsIndexResp.CorrelationId == "" {
+								log.Printf("city: %v (%v) | variant: %v (%v) - oneDayTerms - %v - no response or no visits could be read from:\n```\n%v\n```\n", cityName, cityId, variant.FullName, variant.ChildId, string(body), day)
+							} else {
+								daysWithVisits := len(termsIndexResp.TermsForService.TermsForDays)
+								log.Printf("city: %v (%v) | variant: %v (%v) - oneDayTerms - %v - days with visits read: %v", cityName, cityId, variant.FullName, variant.ChildId, daysWithVisits, day)
+
+								if daysWithVisits > 0 {
+									newEntry := termsResponseExtended{
+										City:           fmt.Sprintf("%v (%v)", cityName, cityId),
+										ServiceVariant: fmt.Sprintf("%v (%v)", variant.FullName, variant.ChildId),
+										TermsResponse:  termsIndexResp.TermsForService.TermsForDays,
+									}
+
+									output = append(output, newEntry)
+								}
+							}
+
+						}
+					}
 				}
 			}
 		}
@@ -147,7 +213,7 @@ func (t termsResponsesExtended) FilterAndClean(clinics []string, doctors []strin
 		termsTarget := termsTarget{
 			Title: fmt.Sprintf("%v | %v", termRootMultiple.City, termRootMultiple.ServiceVariant),
 		}
-		for _, termForDay := range termRootMultiple.TermsResponse.TermsForService.TermsForDays {
+		for _, termForDay := range termRootMultiple.TermsResponse {
 			for _, term := range termForDay.Terms {
 				var isClinic, isDoctor bool
 
