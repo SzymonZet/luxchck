@@ -28,7 +28,7 @@ var TermsEndpoint termsEndpointType = termsEndpointType{
 type termsIndexResponse struct {
 	CorrelationId   string `json:"correlationId"`
 	TermsForService struct {
-		TermsForDays     []termsforDays `json:"termsForDays"`
+		TermsForDays     []termsForDays `json:"termsForDays"`
 		TermsInfoForDays []struct {
 			Day          string `json:"day"`
 			TermsStatus  int    `json:"termsStatus"` // 0 => potential visits exist that day
@@ -42,15 +42,16 @@ type termsIndexResponse struct {
 
 type termsOneDayResponse struct {
 	CorrelationId string       `json:"correlationId"`
-	TermsForDay   termsforDays `json:"termsForDay"`
+	TermsForDay   termsForDays `json:"termsForDay"`
 }
 
-type termsforDays struct {
+type termsForDays struct {
 	Day   string `json:"day"`
 	Terms []struct {
 		DateTimeFrom string `json:"dateTimeFrom"`
 		DateTimeTo   string `json:"dateTimeTo"`
 		Doctor       struct {
+			Id            int    `json:"id"`
 			AcademicTitle string `json:"academicTitle"`
 			FirstName     string `json:"firstName"`
 			LastName      string `json:"lastName"`
@@ -64,7 +65,7 @@ type termsforDays struct {
 type termsResponseExtended struct {
 	City           string
 	ServiceVariant string
-	TermsResponse  []termsforDays
+	TermsResponse  []termsForDays
 }
 
 type termsResponsesExtended []termsResponseExtended
@@ -145,8 +146,14 @@ func (t termsEndpointType) GetAllRaw(cities map[string]int, serviceVariants []Se
 
 					output = append(output, newEntry)
 				} else {
+					newEntry := termsResponseExtended{
+						City:           fmt.Sprintf("%v (%v)", cityName, cityId),
+						ServiceVariant: fmt.Sprintf("%v (%v)", variant.FullName, variant.ChildId),
+						TermsResponse:  []termsForDays{},
+					}
 					for _, info := range termsIndexResp.TermsForService.TermsInfoForDays {
 						if info.TermsCounter.TermsNumber > 0 {
+
 							day := extractDate(info.Day)
 							var termsOneDayResp termsOneDayResponse
 							req = createAuthorizedRequest(t.urlOneDayTerms, "GET")
@@ -172,30 +179,23 @@ func (t termsEndpointType) GetAllRaw(cities map[string]int, serviceVariants []Se
 							err = json.Unmarshal(body, &termsOneDayResp)
 
 							// debug
-							fmt.Println()
+							// fmt.Println()
 							// fmt.Println(req.URL)
 							// fmt.Println(string(body))
-							fmt.Println(termsOneDayResp)
-							fmt.Println()
+							// fmt.Println(termsOneDayResp)
+							// fmt.Println()
 
-							if termsIndexResp.CorrelationId == "" {
-								log.Printf("city: %v (%v) | variant: %v (%v) - oneDayTerms - %v - no response or no visits could be read from:\n```\n%v\n```\n", cityName, cityId, variant.FullName, variant.ChildId, string(body), day)
+							if termsOneDayResp.CorrelationId == "" {
+								log.Printf("city: %v (%v) | variant: %v (%v) - oneDayTerms - %v - no response or no visits could be read from:\n```\n%v\n```\n", cityName, cityId, variant.FullName, variant.ChildId, day, string(body))
 							} else {
-								daysWithVisits := len(termsIndexResp.TermsForService.TermsForDays)
-								log.Printf("city: %v (%v) | variant: %v (%v) - oneDayTerms - %v - days with visits read: %v", cityName, cityId, variant.FullName, variant.ChildId, daysWithVisits, day)
-
-								if daysWithVisits > 0 {
-									newEntry := termsResponseExtended{
-										City:           fmt.Sprintf("%v (%v)", cityName, cityId),
-										ServiceVariant: fmt.Sprintf("%v (%v)", variant.FullName, variant.ChildId),
-										TermsResponse:  termsIndexResp.TermsForService.TermsForDays,
-									}
-
-									output = append(output, newEntry)
-								}
+								log.Printf("city: %v (%v) | variant: %v (%v) - oneDayTerms - %v - response received", cityName, cityId, variant.FullName, variant.ChildId, day)
+								newEntry.TermsResponse = append(newEntry.TermsResponse, termsOneDayResp.TermsForDay)
 							}
 
 						}
+					}
+					if len(newEntry.TermsResponse) > 0 {
+						output = append(output, newEntry)
 					}
 				}
 			}
@@ -207,8 +207,9 @@ func (t termsEndpointType) GetAllRaw(cities map[string]int, serviceVariants []Se
 	return output
 }
 
-func (t termsResponsesExtended) FilterAndClean(clinics []string, doctors []string) TermsTargets {
+func (t termsResponsesExtended) FilterAndClean(clinics []string, doctors []string, doctorsMap map[int]string) TermsTargets {
 	var output TermsTargets
+
 	for _, termRootMultiple := range t {
 		termsTarget := termsTarget{
 			Title: fmt.Sprintf("%v | %v", termRootMultiple.City, termRootMultiple.ServiceVariant),
@@ -220,11 +221,19 @@ func (t termsResponsesExtended) FilterAndClean(clinics []string, doctors []strin
 				// this is suboptimal, as it doesn't really make sense to process the result BEFORE filtering
 				// kept like this for now, for accurate logging (to be changed once properly tested / confidence gained)
 				fullDoctorName := fmt.Sprintf("%v %v %v", term.Doctor.AcademicTitle, term.Doctor.FirstName, term.Doctor.LastName)
+				if strings.TrimSpace(fullDoctorName) == "" {
+					fullDoctorName = doctorsMap[term.Doctor.Id]
+				}
+				clinic := term.Clinic
+				if strings.TrimSpace(clinic) == "" {
+					clinic = "[empty]"
+				}
+
 				new := TermFlatten{
 					Day:      extractDate(termForDay.Day),
 					TimeFrom: extractTime(term.DateTimeFrom),
 					TimeTo:   extractTime(term.DateTimeTo),
-					Clinic:   term.Clinic,
+					Clinic:   clinic,
 					Doctor:   fullDoctorName,
 				}
 
@@ -250,9 +259,9 @@ func (t termsResponsesExtended) FilterAndClean(clinics []string, doctors []strin
 
 				if isDoctor || len(doctors) == 0 {
 					termsTarget.Terms = append(termsTarget.Terms, new)
-					log.Printf("term %v met the filter conditions", new)
+					log.Printf("term: %v met the filter conditions", new)
 				} else {
-					log.Printf("term %v did NOT meet filter conditions (clinics: %v | doctors: %v)", new, isClinic, isDoctor)
+					log.Printf("term: %v did NOT meet filter conditions (clinics: %v | doctors: %v)", new, isClinic, isDoctor)
 				}
 
 			}

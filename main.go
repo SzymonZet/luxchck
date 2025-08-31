@@ -40,22 +40,30 @@ func main() {
 
 	log.Println("main processing started...")
 
-	variants := lux.ServiceVariantsGroupsEndpoint.GetAllRaw().GetFiltered(*params["visitTypes"])
-	cities := lux.CitiesEndpoint.GetAllRaw().GetFiltered(*params["city"])
+	// parameters
 	clinics := strings.Split(*params["clinics"], ";")
 	doctors := strings.Split(*params["doctors"], ";")
 
+	// api calls
+	variants := lux.ServiceVariantsGroupsEndpoint.GetAllRaw().GetFiltered(*params["visitTypes"])
+	cities := lux.CitiesEndpoint.GetAllRaw().GetFiltered(*params["city"])
+	doctorsMap := lux.DoctorsEndpoint.GetAllDoctorsMap(variants, cities)
+
+	// warning
 	reqCombinationsCount := len(cities) * len(variants)
 	log.Printf("cities: %v | variants: %v | total: %v\n", len(cities), len(variants), reqCombinationsCount)
 	if reqCombinationsCount > 5 {
 		log.Printf("WARN | too many potential request combinations: %v | you may exceed rates / encounter error 429, please consider narrowing down search parameters!", reqCombinationsCount)
 	}
 
-	terms := lux.TermsEndpoint.GetAllRaw(cities, variants).FilterAndClean(clinics, doctors)
+	// terms extraction + in-memory filtering
+	terms := lux.TermsEndpoint.GetAllRaw(cities, variants).FilterAndClean(clinics, doctors, doctorsMap)
 
 	log.Println("main processing completed successfully")
 
 	// debug
+	//fmt.Println(terms)
+	//fmt.Println(doctorsMap)
 	//filteredTerms := terms.FilterAndClean(clinics, doctors)
 	//fmt.Println(filteredTerms)
 	// fmt.Println(groups)
